@@ -2,6 +2,14 @@
 
 All notable changes to this project. Format: [Keep a Changelog](https://keepachangelog.com), versions: [SemVer](https://semver.org).
 
+## [Unreleased]
+
+### Fixed
+- CH-1: `CLAIMS_PKG` body did not compile on Oracle (PLS-00382 at `utc_now`). `SYS_EXTRACT_UTC(SYSTIMESTAMP)` now runs only inside SQL statements, and the helper function is gone.
+
+### Changed
+- CI actions moved to Node 24 versions (checkout v5, setup-python v6, setup-node v5).
+
 ## [0.1.0] - 2026-09-29
 
 ### Added

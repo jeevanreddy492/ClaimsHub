@@ -1,12 +1,8 @@
 CREATE OR REPLACE PACKAGE BODY claims_pkg AS
 
   -- ---------------------------------------------------------------- helpers
-  -- PL/SQL use only: a private package function cannot be called inside SQL
-  -- (PLS-00231), so SQL statements use SYS_EXTRACT_UTC(SYSTIMESTAMP) directly.
-  FUNCTION utc_now RETURN TIMESTAMP IS
-  BEGIN
-    RETURN CAST(SYS_EXTRACT_UTC(SYSTIMESTAMP) AS TIMESTAMP);
-  END utc_now;
+  -- Timestamps are UTC: SYS_EXTRACT_UTC(SYSTIMESTAMP) is used inside SQL statements only.
+  -- (In a plain PL/SQL expression it fails with PLS-00382, see CH-1.)
 
   PROCEDURE write_audit(
     p_entity         IN VARCHAR2,
@@ -190,13 +186,12 @@ CREATE OR REPLACE PACKAGE BODY claims_pkg AS
     TYPE t_statuses IS TABLE OF claim.status%TYPE;
     v_ids      t_ids;
     v_statuses t_statuses;
-    v_cutoff   TIMESTAMP := utc_now - NUMTODSINTERVAL(p_days_inactive, 'DAY');
   BEGIN
     SELECT c.claim_id, c.status
       BULK COLLECT INTO v_ids, v_statuses
       FROM claim c
-     WHERE (c.status = 'DENIED' AND c.updated_at < v_cutoff)
-        OR (c.status = 'APPROVED' AND c.claim_type = 'LIFE' AND c.updated_at < v_cutoff)
+     WHERE (c.status = 'DENIED' AND c.updated_at < SYS_EXTRACT_UTC(SYSTIMESTAMP) - NUMTODSINTERVAL(p_days_inactive, 'DAY'))
+        OR (c.status = 'APPROVED' AND c.claim_type = 'LIFE' AND c.updated_at < SYS_EXTRACT_UTC(SYSTIMESTAMP) - NUMTODSINTERVAL(p_days_inactive, 'DAY'))
         OR (c.status = 'APPROVED' AND c.claim_type = 'STD'
             AND EXISTS (SELECT 1
                           FROM std_claim_detail s
