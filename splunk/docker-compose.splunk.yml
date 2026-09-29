@@ -1,0 +1,20 @@
+# Splunk Free on your laptop (500 MB/day of logs; the Free license turns off logins).
+#   docker compose -f splunk/docker-compose.splunk.yml up -d
+#   open http://localhost:8001
+# Apple Silicon: the image is x86 only, Docker Desktop runs it with emulation (slower start).
+services:
+  splunk:
+    image: splunk/splunk:latest
+    platform: linux/amd64
+    environment:
+      SPLUNK_START_ARGS: --accept-license
+      SPLUNK_GENERAL_TERMS: --accept-sgt-current-at-splunk-com
+      SPLUNK_PASSWORD: ${SPLUNK_PASSWORD:-ChangeMe_12345}
+      SPLUNK_LICENSE_URI: Free
+    ports: ["8001:8000"]
+    volumes:
+      - ${HOME}/claimshub-logs:/var/log/claimshub:ro
+      - ./claimshub_app:/opt/splunk/etc/apps/claimshub_app
+      - splunk-var:/opt/splunk/var
+volumes:
+  splunk-var:

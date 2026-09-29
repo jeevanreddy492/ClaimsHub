@@ -1,0 +1,43 @@
+# Local stack: Oracle Free + API + UI.
+#   docker compose up -d oracle          (first start takes 1-2 minutes)
+#   make db-setup                        (tables, PL/SQL, demo data)
+#   docker compose up -d --build api web
+#   open http://localhost:8080
+services:
+  oracle:
+    image: gvenzl/oracle-free:23-slim-faststart
+    ports: ["1521:1521"]
+    environment:
+      ORACLE_PASSWORD: ${ORACLE_PASSWORD:-LocalOnly_123}
+      APP_USER: claimshub
+      APP_USER_PASSWORD: ${APP_USER_PASSWORD:-claimshub}
+    volumes:
+      - oracle-data:/opt/oracle/oradata
+      - ./deploy/oracle-init:/container-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  api:
+    build: ./backend
+    environment:
+      CLAIMSHUB_DATABASE_URL: oracle+oracledb://claimshub:${APP_USER_PASSWORD:-claimshub}@oracle:1521/?service_name=FREEPDB1
+      CLAIMSHUB_JWT_SECRET: ${CLAIMSHUB_JWT_SECRET:-local-dev-secret-change-me-0123456789}
+      CLAIMSHUB_CORS_ORIGINS: '["http://localhost:8080","http://localhost:5173"]'
+    ports: ["8000:8000"]
+    depends_on:
+      oracle:
+        condition: service_healthy
+
+  web:
+    build: ./frontend
+    environment:
+      SITE_ADDRESS: ":80"
+    ports: ["8080:80"]
+    depends_on: [api]
+
+volumes:
+  oracle-data:

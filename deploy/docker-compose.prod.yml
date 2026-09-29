@@ -1,0 +1,33 @@
+# Production on the Oracle Cloud free ARM VM. The database is Autonomous Database (managed).
+#   cd ~/ClaimsHub && docker compose -f deploy/docker-compose.prod.yml --env-file .env up -d --build
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "20m"   # keep the VM disk safe
+    max-file: "5"
+
+services:
+  api:
+    build: ../backend
+    restart: unless-stopped
+    env_file: ../.env
+    environment:
+      CLAIMSHUB_ENVIRONMENT: prod
+      CLAIMSHUB_CORS_ORIGINS: '["https://${SITE_ADDRESS}"]'
+    expose: ["8000"]
+    logging: *logging
+    mem_limit: 1g
+
+  web:
+    build: ../frontend
+    restart: unless-stopped
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+    ports: ["80:80", "443:443"]
+    volumes:
+      - caddy-data:/data   # keeps the HTTPS certificate across restarts
+    depends_on: [api]
+    logging: *logging
+
+volumes:
+  caddy-data:

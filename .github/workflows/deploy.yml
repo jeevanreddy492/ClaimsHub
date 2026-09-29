@@ -1,0 +1,26 @@
+name: Deploy
+
+# Runs when you push a release tag, e.g.  git tag v0.1.0 && git push origin v0.1.0
+# Needs repo secrets: VM_HOST (public IP), VM_USER (ubuntu), VM_SSH_KEY (private key).
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag: { description: "Tag to deploy", required: true }
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Release on the VM over SSH
+        env:
+          TAG: ${{ github.event.inputs.tag || github.ref_name }}
+          HOST: ${{ secrets.VM_HOST }}
+          USER: ${{ secrets.VM_USER }}
+          KEY: ${{ secrets.VM_SSH_KEY }}
+        run: |
+          install -m 600 /dev/null key && printf '%s\n' "$KEY" > key
+          ssh -i key -o StrictHostKeyChecking=accept-new "$USER@$HOST" \
+            "cd ~/ClaimsHub && ./deploy/release.sh '$TAG'"

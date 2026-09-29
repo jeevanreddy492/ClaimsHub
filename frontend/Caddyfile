@@ -1,0 +1,29 @@
+# SITE_ADDRESS examples:
+#   :80                        local / plain HTTP by IP
+#   claimshub.duckdns.org      real HTTPS with a free Let's Encrypt certificate
+{$SITE_ADDRESS::80} {
+	encode gzip
+
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+
+	@api path /api/* /health /health/* /docs /docs/* /openapi.json
+	handle @api {
+		reverse_proxy api:8000
+	}
+
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+
+	log {
+		output stdout
+		format json
+	}
+}
