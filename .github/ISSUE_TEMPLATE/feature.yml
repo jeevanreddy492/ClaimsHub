@@ -1,0 +1,15 @@
+name: Feature / user story
+description: New behavior for users
+labels: [feature]
+body:
+  - type: textarea
+    id: story
+    attributes: { label: User story, placeholder: "As an adjuster, I can ... so that ..." }
+    validations: { required: true }
+  - type: textarea
+    id: acceptance
+    attributes: { label: Acceptance criteria, placeholder: "- Given ... when ... then ..." }
+    validations: { required: true }
+  - type: dropdown
+    id: points
+    attributes: { label: Story points, options: ["1", "2", "3", "5", "8"] }

@@ -1,0 +1,18 @@
+name: Production incident
+description: A problem in production that needs triage now
+labels: [incident]
+body:
+  - type: dropdown
+    id: severity
+    attributes: { label: Severity, options: ["Sev 1 - down", "Sev 2 - major", "Sev 3 - minor", "Sev 4 - cosmetic"] }
+    validations: { required: true }
+  - type: textarea
+    id: impact
+    attributes: { label: Impact, description: Who and what is affected, since when }
+    validations: { required: true }
+  - type: textarea
+    id: evidence
+    attributes: { label: Evidence, description: Splunk query, sample log line, correlation IDs }
+  - type: textarea
+    id: actions
+    attributes: { label: Actions so far }
