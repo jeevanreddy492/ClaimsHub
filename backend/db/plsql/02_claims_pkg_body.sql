@@ -1,6 +1,8 @@
 CREATE OR REPLACE PACKAGE BODY claims_pkg AS
 
   -- ---------------------------------------------------------------- helpers
+  -- PL/SQL use only: a private package function cannot be called inside SQL
+  -- (PLS-00231), so SQL statements use SYS_EXTRACT_UTC(SYSTIMESTAMP) directly.
   FUNCTION utc_now RETURN TIMESTAMP IS
   BEGIN
     RETURN CAST(SYS_EXTRACT_UTC(SYSTIMESTAMP) AS TIMESTAMP);
@@ -16,7 +18,7 @@ CREATE OR REPLACE PACKAGE BODY claims_pkg AS
   ) IS
   BEGIN
     INSERT INTO audit_log (entity, entity_id, action, details, changed_by, changed_at, correlation_id)
-    VALUES (p_entity, p_entity_id, p_action, SUBSTR(p_details, 1, 1000), p_changed_by, utc_now,
+    VALUES (p_entity, p_entity_id, p_action, SUBSTR(p_details, 1, 1000), p_changed_by, SYS_EXTRACT_UTC(SYSTIMESTAMP),
             p_correlation_id);
   END write_audit;
 
@@ -42,6 +44,8 @@ CREATE OR REPLACE PACKAGE BODY claims_pkg AS
     v_status  claim.status%TYPE;
     v_version claim.version%TYPE;
     v_type    claim.claim_type%TYPE;
+    e_row_locked EXCEPTION;
+    PRAGMA EXCEPTION_INIT(e_row_locked, -30006);  -- WAIT 5 ran out
   BEGIN
     BEGIN
       -- Row lock: two adjusters cannot change the same claim at the same time.
@@ -53,14 +57,17 @@ CREATE OR REPLACE PACKAGE BODY claims_pkg AS
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
         RAISE_APPLICATION_ERROR(c_not_found, 'Claim ' || p_claim_id || ' not found');
+      WHEN e_row_locked THEN
+        RAISE_APPLICATION_ERROR(c_version_conflict,
+          'Claim ' || p_claim_id || ' is being changed by someone else. Try again.');
     END;
 
-    IF v_version <> p_expected_version THEN
+    IF p_expected_version IS NULL OR v_version <> p_expected_version THEN
       RAISE_APPLICATION_ERROR(c_version_conflict,
         'Claim ' || p_claim_id || ' was changed by someone else (version ' || v_version || ')');
     END IF;
 
-    IF NOT is_valid_transition(v_status, p_to_status) THEN
+    IF NOT NVL(is_valid_transition(v_status, p_to_status), FALSE) THEN
       RAISE_APPLICATION_ERROR(c_invalid_transition,
         'Cannot move claim from ' || v_status || ' to ' || p_to_status);
     END IF;
@@ -72,12 +79,12 @@ CREATE OR REPLACE PACKAGE BODY claims_pkg AS
     UPDATE claim
        SET status      = p_to_status,
            version     = version + 1,
-           updated_at  = utc_now,
+           updated_at  = SYS_EXTRACT_UTC(SYSTIMESTAMP),
            closed_date = CASE WHEN p_to_status = 'CLOSED' THEN TRUNC(SYSDATE) ELSE closed_date END
      WHERE claim_id = p_claim_id;
 
     INSERT INTO claim_status_history (claim_id, from_status, to_status, reason, changed_by, changed_at)
-    VALUES (p_claim_id, v_status, p_to_status, SUBSTR(p_reason, 1, 300), p_changed_by, utc_now);
+    VALUES (p_claim_id, v_status, p_to_status, SUBSTR(p_reason, 1, 300), p_changed_by, SYS_EXTRACT_UTC(SYSTIMESTAMP));
 
     write_audit('CLAIM', p_claim_id, 'STATUS_CHANGE',
                 v_status || ' -> ' || p_to_status || ': ' || p_reason,
@@ -163,7 +170,7 @@ CREATE OR REPLACE PACKAGE BODY claims_pkg AS
                ORDER BY beneficiary_id) LOOP
       v_amount := ROUND(v_payout * b.share_pct / 100, 2);
       INSERT INTO payment (claim_id, beneficiary_id, amount, status, created_at)
-      VALUES (p_claim_id, b.beneficiary_id, v_amount, 'PENDING', utc_now)
+      VALUES (p_claim_id, b.beneficiary_id, v_amount, 'PENDING', SYS_EXTRACT_UTC(SYSTIMESTAMP))
       RETURNING payment_id INTO v_payment_id;
       IF v_first_id IS NULL THEN
         v_first_id := v_payment_id;
@@ -200,13 +207,13 @@ CREATE OR REPLACE PACKAGE BODY claims_pkg AS
     FORALL i IN 1 .. v_ids.COUNT
       UPDATE claim
          SET status = 'CLOSED', closed_date = TRUNC(SYSDATE), version = version + 1,
-             updated_at = utc_now
+             updated_at = SYS_EXTRACT_UTC(SYSTIMESTAMP)
        WHERE claim_id = v_ids(i);
 
     FORALL i IN 1 .. v_ids.COUNT
       INSERT INTO claim_status_history (claim_id, from_status, to_status, reason, changed_by, changed_at)
       VALUES (v_ids(i), v_statuses(i), 'CLOSED',
-              'Auto-closed: no activity for ' || p_days_inactive || ' days', 'BATCH', utc_now);
+              'Auto-closed: no activity for ' || p_days_inactive || ' days', 'BATCH', SYS_EXTRACT_UTC(SYSTIMESTAMP));
 
     p_closed := v_ids.COUNT;
     write_audit('BATCH', 0, 'CLOSE_STALE_CLAIMS', 'closed=' || p_closed, 'BATCH');
@@ -249,7 +256,7 @@ CREATE OR REPLACE PACKAGE BODY claims_pkg AS
         EXIT WHEN v_period_end > p_as_of;  -- only pay periods that are over
         v_amount := ROUND(c.weekly_benefit * (v_period_end - v_period_start + 1) / 7, 2);
         INSERT INTO payment (claim_id, period_start, period_end, amount, status, created_at)
-        VALUES (c.claim_id, v_period_start, v_period_end, v_amount, 'PENDING', utc_now);
+        VALUES (c.claim_id, v_period_start, v_period_end, v_amount, 'PENDING', SYS_EXTRACT_UTC(SYSTIMESTAMP));
         p_created := p_created + 1;
         v_period_start := v_period_end + 1;
       END LOOP;

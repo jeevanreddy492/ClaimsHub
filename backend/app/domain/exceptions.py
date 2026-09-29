@@ -52,4 +52,5 @@ ORACLE_ERROR_MAP: dict[int, type[DomainError]] = {
     20003: NotFoundError,
     20004: ValidationError,  # beneficiary shares do not add up to 100
     20005: ValidationError,  # benefit calculation not possible
+    30006: ConflictError,  # ORA-30006 row lock wait timed out (claim busy)
 }

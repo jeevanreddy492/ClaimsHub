@@ -42,8 +42,10 @@ def build_engine(url: str | None = None) -> Engine:
 
         return engine
 
+    connect_args = {"dsn": settings.database_dsn} if settings.database_dsn else {}
     return create_engine(
         url,
+        connect_args=connect_args,
         pool_size=settings.db_pool_size,
         max_overflow=settings.db_max_overflow,
         pool_timeout=settings.db_pool_timeout_seconds,

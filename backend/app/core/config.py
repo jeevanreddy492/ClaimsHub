@@ -23,6 +23,11 @@ class Settings(BaseSettings):
     database_url: str = (
         "oracle+oracledb://claimshub:claimshub@localhost:1521/?service_name=FREEPDB1"
     )
+    # Optional full Oracle connect string (for example the Autonomous Database TLS
+    # string from the OCI console). When set, it is used instead of host/port in the URL:
+    #   CLAIMSHUB_DATABASE_URL=oracle+oracledb://CLAIMSHUB:<password>@
+    #   CLAIMSHUB_DATABASE_DSN=(description=(retry_count=20)...(security=(ssl_server_dn_match=yes)))
+    database_dsn: str | None = None
     db_pool_size: int = 5
     db_max_overflow: int = 10
     db_pool_timeout_seconds: int = 30

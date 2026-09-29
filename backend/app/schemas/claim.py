@@ -4,7 +4,7 @@ from decimal import Decimal
 from pydantic import BaseModel, Field, field_validator
 
 from app.domain.enums import ClaimStatus
-from app.schemas.common import ORMModel
+from app.schemas.common import Money, ORMModel
 
 
 class StdClaimCreate(BaseModel):
@@ -49,7 +49,7 @@ class StdDetailOut(ORMModel):
     disability_start_date: date
     condition_category: str
     elimination_days: int
-    weekly_benefit: Decimal | None
+    weekly_benefit: Money | None
     benefit_start_date: date | None
     return_to_work_date: date | None
 
@@ -57,14 +57,14 @@ class StdDetailOut(ORMModel):
 class LifeDetailOut(ORMModel):
     date_of_death: date
     cause_category: str
-    payout_amount: Decimal
+    payout_amount: Money
 
 
 class BeneficiaryOut(ORMModel):
     beneficiary_id: int
     full_name: str
     relationship: str = Field(validation_alias="relationship_type")
-    share_pct: Decimal
+    share_pct: Money
 
 
 class HistoryOut(ORMModel):
@@ -80,7 +80,7 @@ class PaymentOut(ORMModel):
     beneficiary_id: int | None
     period_start: date | None
     period_end: date | None
-    amount: Decimal
+    amount: Money
     status: str
     created_at: datetime
 
@@ -111,7 +111,7 @@ class ClaimDetailOut(ClaimSummaryOut):
 
 class BenefitCalculationOut(BaseModel):
     claim_id: int
-    weekly_benefit: Decimal
+    weekly_benefit: Money
     benefit_start_date: date
 
 

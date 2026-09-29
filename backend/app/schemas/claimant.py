@@ -3,7 +3,7 @@ from decimal import Decimal
 
 from pydantic import BaseModel, EmailStr, Field, model_validator
 
-from app.schemas.common import ORMModel
+from app.schemas.common import Money, ORMModel
 
 
 class ClaimantCreate(BaseModel):
@@ -38,6 +38,6 @@ class ClaimantOut(ORMModel):
     last_name: str
     date_of_birth: date
     hire_date: date
-    weekly_salary: Decimal
+    weekly_salary: Money
     email: str | None
     created_at: datetime

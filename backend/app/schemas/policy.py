@@ -4,7 +4,7 @@ from decimal import Decimal
 from pydantic import BaseModel, Field, model_validator
 
 from app.domain.enums import ProductType
-from app.schemas.common import ORMModel
+from app.schemas.common import Money, ORMModel
 
 
 class EmployerCreate(BaseModel):
@@ -48,9 +48,9 @@ class PolicyOut(ORMModel):
     policy_number: str
     employer_id: int
     product_type: str
-    benefit_pct: Decimal | None
-    max_weekly_benefit: Decimal | None
+    benefit_pct: Money | None
+    max_weekly_benefit: Money | None
     elimination_days: int | None
     max_benefit_weeks: int | None
-    face_amount: Decimal | None
+    face_amount: Money | None
     effective_date: date
